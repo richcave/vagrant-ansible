@@ -1,0 +1,16 @@
+# file: site.yml
+
+# Apply common configuration to all hosts
+- hosts: all
+  roles:
+    - common
+
+# Configure and deploy database servers
+- hosts: dbservers
+  roles:
+    - common
+    
+# Configure and deploy web servers
+- hosts: webservers
+  roles:
+    - common

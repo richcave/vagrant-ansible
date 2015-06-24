@@ -1,0 +1,17 @@
+<VirtualHost *:80>
+    ServerAdmin {{ httpd_admin }}
+	DocumentRoot /var/www/{{ httpd_hostname }}
+    ServerName www.{{ httpd_hostname }}.com
+    ServerAlias {{ httpd_hostname }} {{ httpd_hostname }}.com
+
+    <Directory "/var/www/{{ httpd_hostname }}">
+        #AllowOverride FileInfo AuthConfig Limit Options
+        AllowOverride All
+        Options +FollowSymLinks +ExecCGI
+    </Directory>
+
+    # Logfiles - assumes using cronolog
+    CustomLog "|/usr/sbin/cronolog /var/log/httpd/{{ httpd_hostname }}-%Y%m%d-access_log" combined
+    ErrorLog logs/{{ httpd_hostname }}-error_log
+
+</VirtualHost>

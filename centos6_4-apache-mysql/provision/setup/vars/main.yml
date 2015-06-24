@@ -1,0 +1,7 @@
+mysqlservice: mysqld
+mysql_port: 3306
+httpd_admin: CHANGE_ME
+httpd_hostname: CHANGE_ME
+db_name: CHANGE_ME
+db_user: CHANGE_ME
+db_password: CHANGE_ME

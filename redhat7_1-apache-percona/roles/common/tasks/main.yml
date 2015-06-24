@@ -1,0 +1,165 @@
+# Upgrade all packages
+- name: Upgrade all yum packages
+  yum: name=* state=latest
+
+# Add EPEL repository
+- name: Check if EPEL RPM is already install installed
+  command: rpm -q epel-release-7-5.noarch
+  ignore_errors: True
+  register: epel_rpm_check
+  failed_when: epel_rpm_check.rc > 1
+
+- name: Fetch EPEL RPM (if it's not installed)
+  get_url: dest=/tmp/epel-release.rpm url=http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm
+  when: epel_rpm_check.rc == 1
+
+- name: Install EPEL RPM (if it's not installed)
+  yum: pkg=/tmp/epel-release.rpm state=installed
+  when: epel_rpm_check.rc == 1
+
+# Add Percona repository
+- name: Check if Percona RPM is already install installed
+  command: rpm -q percona-release-0.1-3.noarch.rpm
+  ignore_errors: True
+  register: percona_rpm_check
+  failed_when: percona_rpm_check.rc > 1
+
+- name: Fetch Percona RPM (if it's not installed)
+  get_url: dest=/tmp/percona-release.rpm url=http://www.percona.com/downloads/percona-release/redhat/0.1-3/percona-release-0.1-3.noarch.rpm
+  when: percona_rpm_check.rc == 1
+
+- name: Install Percona RPM (if it's not installed)
+  yum: pkg=/tmp/percona-release.rpm state=installed
+  when: percona_rpm_check.rc == 1
+
+# Install new packages
+- name: Install new yum packages
+  yum: name={{ item }} state=installed
+  with_items:
+      # Useful
+      - bind-utils
+      - wget
+      - screen
+      - cronolog
+      - java-1.7.0-openjdk-devel
+      - httpd
+      #- lynx
+      - gcc
+      - subversion
+      # Database
+      - Percona-Server-server-56
+      - Percona-Server-client-56
+      - Percona-Server-devel-56
+      - MySQL-python # required for python scripts
+      - libselinux-python
+      - libsemanage-python
+      # Python Dev
+      - python-devel
+      # Node.js
+      - nodejs # required for Bootstrap
+      - npm # required for Bootstrap
+      # Misc
+      - ImageMagick
+      - zlib-devel
+
+# Install packages for R and R
+- name: install blas-devel
+  yum: name=http://mirror.centos.org/centos/7/os/x86_64/Packages/blas-devel-3.4.2-4.el7.x86_64.rpm state=present
+
+- name: install lapack-devel
+  yum: name=http://mirror.centos.org/centos/7/os/x86_64/Packages/lapack-devel-3.4.2-4.el7.x86_64.rpm state=present
+
+- name: install texlive-epsf (required for texinfo-tex)
+  yum: name=http://mirror.centos.org/centos/7/os/x86_64/Packages/texlive-epsf-svn21461.2.7.4-32.el7.noarch.rpm state=present
+
+- name: install texinfo-tex
+  yum: name=http://mirror.centos.org/centos/7/os/x86_64/Packages/texinfo-tex-5.1-4.el7.x86_64.rpm state=present
+
+- name: install libicu-devel
+  yum: name=http://mirror.centos.org/centos/7/os/x86_64/Packages/libicu-devel-50.1.2-11.el7.x86_64.rpm state=present
+
+- name: install R
+  yum: name=R state=latest
+
+# Disable SELinux
+- name: Copy selinux file with SELINUX=disabled
+  copy: src=selinux dest=/etc/sysconfig/
+  
+- name: Disable SELinux 
+  action: command /usr/sbin/setenforce 0
+  
+# Install yumupdate script if use yum-cron package isn't available
+- name: Copy yumupdate bash script
+  copy: src=yumupdate dest=/etc/cron.daily/
+  
+- name: Set executable permission on yumupdate script
+  action: command /bin/chmod +x /etc/cron.daily/yumupdate
+
+# Install Subversion 1.8 (requires libsasl2)
+#- name: Bootstrap WANdisco install
+#  copy: src=WANdisco-1.8.repo dest=/etc/yum.repos.d/ owner=root group=root mode=0644
+
+#- name: Fetch WANdisco RPM-GPG-KEY
+#  action: command wget http://opensource.wandisco.com/RPM-GPG-KEY-WANdisco -O /tmp/RPM-GPG-KEY-WANdisco
+
+#- name: Import WANdisco RPM-GPG-KEY
+#  action: command rpm --import /tmp/RPM-GPG-KEY-WANdisco
+  
+#- name: Remove WANdisco RPM-GPG-KEY
+#  action: command rm -rf /tmp/RPM-GPG-KEY-WANdisco
+
+#- name: Install latest version of Subversion
+#  yum: name=subversion state=latest
+
+# Copy and set IPTables rules
+#- name: Set iptables to autostart on boot
+#  action: command /sbin/chkconfig --level 345 iptables on
+ 
+#- name: Copy IPTables bash script
+#  copy: src=iptables.sh dest=/tmp/iptables.sh
+  
+#- name: Run IPTables bash script
+#  action: command /bin/bash /tmp/iptables.sh
+  
+# Apache http setup and configuration
+- name: Write the apache config file
+  template: src=vhost.cnf.j2 dest=/etc/httpd/conf.d/{{ httpd_hostname }}.conf
+  notify:
+      - restart httpd
+
+- name: Start Apache httpd
+  service: name=httpd state=started enabled=true
+
+- name: Ensure Apache httpd is running automatically at boot time
+  action: command /sbin/chkconfig --level 345 httpd on
+
+# MySQL setup and configuration
+- name: Create MySQL configuration file
+  template: src=mysql.cnf.j2 dest=/etc/my.cnf
+  notify:
+      - restart mysql
+
+- name: Start MySQL Service
+  service: name=mysqld state=started enabled=true
+
+- name: Ensure MySQL is running automatically at boot time
+  action: command /sbin/chkconfig --level 345 mysqld on
+
+- name: Update mysql root password for all root accounts
+  mysql_user: name=root host={{ item }} password={{ mysql_root_password }}
+  with_items:
+      #- "{{ ansible_hostname }}"
+      - 127.0.0.1
+      - ::1
+      - localhost
+  ignore_errors: True
+  
+- name: Copy .my.cnf file with root password credentials
+  template: src=root.my.cnf.j2 dest=~/.my.cnf mode=0600
+
+- name: Create Application Database
+  mysql_db: name={{ db_name }} state=present
+
+- name: Create Application DB User
+  mysql_user: name={{ db_user }} password={{ db_password }} priv=*.*:ALL state=present
+

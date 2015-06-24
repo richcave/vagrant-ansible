@@ -1,0 +1,6 @@
+---
+configs:
+    use: 'default'
+    default:
+        private_ip: '192.168.20.50'
+		application: CHAMGE_ME_TO_APP_NAME

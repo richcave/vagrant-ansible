@@ -1,0 +1,4 @@
+# file: ec2instances
+
+[us-west-2-webservers]
+# Add your public EC2 DNS here

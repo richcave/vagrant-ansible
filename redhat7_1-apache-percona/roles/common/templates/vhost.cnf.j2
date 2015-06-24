@@ -1,0 +1,24 @@
+<VirtualHost *:80>
+  ServerAdmin {{ httpd_admin }}
+  # DocumentRoot /var/www/{{ httpd_hostname }}
+  ServerName www.{{ httpd_hostname }}.com
+  ServerAlias {{ httpd_hostname }} {{ httpd_hostname }}.com
+
+  # Proxy
+  ProxyRequests Off
+  ProxyPass / http://{{ proxy_ip }}:{{ proxy_port }}/ retry=5
+  ProxyPassReverse  / http://{{ proxy_ip }}:{{ proxy_port }}/
+  ProxyPreserveHost On
+
+  <Proxy *>
+    Order allow,deny
+    # Deny from all
+    # Allow from .example.com
+    Allow from all
+  </Proxy>
+
+    # Logfiles - assumes using cronolog
+    CustomLog "|/usr/sbin/cronolog /var/log/httpd/{{ httpd_hostname }}-%Y%m%d-access_log" combined
+    ErrorLog logs/{{ httpd_hostname }}-error_log
+
+</VirtualHost>

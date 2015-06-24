@@ -1,0 +1,13 @@
+# Handler to handle DB tier notifications
+- name: restart mysql
+  sudo: yes
+  action: service name=mysqld state=restarted
+
+# Handler to handle IPTables tier notifications
+- name: restart iptables
+  action: service name=iptables state=restarted
+  
+# Handler to handle Apache httpd tier notifications
+- name: restart httpd
+  sudo: yes
+  action: service name=httpd state=restarted
